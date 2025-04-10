@@ -3,3 +3,6 @@
 
 # dependencies directory
 node_modules/
+
+#vscode
+.vscode/
