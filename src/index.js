@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import connectDB from "./databases/connect.js";
 import authRouter from "./routes/authRoutes.js";
+import wordRouter from "./routes/wordRoutes.js";
 dotenv.config();
 
 const app = express();
@@ -18,6 +19,7 @@ app.use(
 );
 
 app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/words", wordRouter);
 
 const start = async () => {
   try {
