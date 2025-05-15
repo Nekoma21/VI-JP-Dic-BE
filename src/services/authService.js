@@ -8,6 +8,7 @@ import NotFoundError from "../errors/NotFoundError.js";
 import UnauthorizedError from "../errors/UnauthorizedError.js";
 import BadRequestError from "../errors/BadRequestError.js";
 import { StatusCodes } from "http-status-codes";
+import jwt from "jsonwebtoken";
 
 dotenv.config();
 
@@ -63,7 +64,12 @@ const verifyEmail = async (req) => {
 
     await User.updateOne({ _id: user._id, verified: true });
     await token.deleteOne();
-
+    const payload = { _id: user._id.toString(), role: user.role };
+    const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET, {
+      expiresIn: "7d",
+    });
+    user.refreshToken = refreshToken;
+    await user.save();
     const userInfo = await User.findById(user._id).select(
       "email fullname username role avatar"
     );
@@ -73,6 +79,7 @@ const verifyEmail = async (req) => {
       data: {
         user: userInfo,
         token: user.generateAuthToken(),
+        refreshToken: refreshToken,
       },
       message: "Xác thực tài khoản thành công",
     };
@@ -110,6 +117,12 @@ const login = async (req) => {
           "Một email đã được gửi đến tài khoản của bạn, vui lòng xác thực",
       };
     }
+    const payload = { _id: user._id.toString(), role: user.role };
+    const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET, {
+      expiresIn: "7d",
+    });
+    user.refreshToken = refreshToken;
+    await user.save();
     const userInfo = await User.findById(user._id).select(
       "email fullname username role avatar"
     );
@@ -118,6 +131,7 @@ const login = async (req) => {
       data: {
         user: userInfo,
         token: user.generateAuthToken(),
+        refreshToken: refreshToken,
       },
       message: "Đăng nhập thành công",
     };
@@ -126,8 +140,44 @@ const login = async (req) => {
   }
 };
 
+const refreshToken = async (data) => {
+  try {
+    const refreshToken = data.body.refreshToken;
+    if (!refreshToken) {
+      throw new BadRequestError("Không tìm thấy Refresh Token!");
+    }
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+    console.log(decoded);
+    const user = await User.findById(decoded._id);
+    if (!user) {
+      throw new NotFoundError("Người dùng không tồn tại!");
+    }
+
+    if (refreshToken !== user.refreshToken) {
+      throw new BadRequestError("Refresh Token không hợp lệ!");
+    }
+
+    return {
+      status: StatusCodes.OK,
+      data: {
+        token: user.generateAuthToken(),
+      },
+      message: "Đăng nhập thành công",
+    };
+  } catch (error) {
+    if (error.name === "TokenExpiredError") {
+      throw new UnauthorizedError("Token đã hết hạn!");
+    } else if (error.name === "JsonWebTokenError") {
+      throw new UnauthorizedError("Token không hợp lệ!");
+    } else {
+      throw error;
+    }
+  }
+};
+
 export const authService = {
   signUp,
   login,
   verifyEmail,
+  refreshToken,
 };

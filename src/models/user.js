@@ -16,6 +16,7 @@ const UserSchema = new mongoose.Schema(
     level: { type: Number },
     demand: { type: String },
     avatar: { type: String },
+    refreshToken: { type: String },
     verified: { type: Boolean, default: false },
   },
   {
@@ -25,9 +26,13 @@ const UserSchema = new mongoose.Schema(
 );
 
 UserSchema.methods.generateAuthToken = function () {
-  const token = jwt.sign({ _id: this._id }, process.env.JWTPRIVATEKEY, {
-    expiresIn: "7d",
-  });
+  const token = jwt.sign(
+    { _id: this._id, role: this.role },
+    process.env.JWTPRIVATEKEY,
+    {
+      expiresIn: "1h",
+    }
+  );
   return token;
 };
 
