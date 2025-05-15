@@ -1,6 +1,7 @@
 import { authService } from "../services/authService.js";
 import { StatusCodes } from "http-status-codes";
 import BadRequestError from "../errors/BadRequestError.js";
+import UnauthorizedError from "../errors/UnauthorizedError.js";
 
 const signUp = async (req, res, next) => {
   try {
@@ -30,12 +31,26 @@ const login = async (req, res, next) => {
     const result = await authService.login(req);
     res.status(StatusCodes.OK).send(result);
   } catch (error) {
-    if (err instanceof UnauthorizedError) {
+    if (error instanceof UnauthorizedError) {
       return res
         .status(StatusCodes.UNAUTHORIZED)
-        .send({ message: err.message });
+        .send({ message: error.message });
     }
-    next(err);
+    next(error);
+  }
+};
+
+const refreshToken = async (req, res, next) => {
+  try {
+    const result = await authService.refreshToken(req);
+    res.status(StatusCodes.OK).send(result);
+  } catch (error) {
+    if (error instanceof UnauthorizedError) {
+      return res
+        .status(StatusCodes.UNAUTHORIZED)
+        .send({ message: error.message });
+    }
+    next(error);
   }
 };
 
@@ -43,4 +58,5 @@ export const authController = {
   signUp,
   login,
   verifyEmail,
+  refreshToken,
 };

@@ -51,16 +51,22 @@ const getWordById = async (data) => {
     }
 
     const result = await Word.findById(id).lean();
-    if (result) {
-      // Tối ưu hóa bằng cách sử dụng $in
-      const kanjiData = await Kanji.find({ text: { $in: result.kanji } });
+    const kanjiArray =
+      Array.isArray(result.kanji) && result.kanji.length > 0
+        ? result.kanji
+        : Array.isArray(result.kanjis)
+        ? result.kanjis
+        : [];
 
-      // Gán kết quả vào trường kanji
-      result.kanji = kanjiData || [];
+    if (kanjiArray.length === 0) {
+      result.kanjis = [];
       return result;
-    } else {
-      throw new NotFoundError("Không tìm thấy dữ liệu!");
     }
+
+    const kanjiData = await Kanji.find({ text: { $in: kanjiArray } });
+
+    result.kanji = kanjiData;
+    return result;
   } catch (error) {
     throw error;
   }
