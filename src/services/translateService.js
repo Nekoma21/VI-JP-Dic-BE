@@ -3,7 +3,7 @@ import path from "path";
 import os from "os";
 import { v4 as uuidv4 } from "uuid";
 import { createWorker } from "tesseract.js";
-import pdfPoppler from "pdf-poppler";
+import pdf2pic from "pdf2pic";
 import dotenv from "dotenv";
 import BadRequestError from "../errors/BadRequestError.js";
 import { StatusCodes } from "http-status-codes";
@@ -17,19 +17,29 @@ const convertPdfToImages = async (pdfPath) => {
   const outputDir = path.dirname(pdfPath);
   const baseName = path.basename(pdfPath, ".pdf");
 
-  const options = {
-    format: "jpeg",
-    out_dir: outputDir,
-    out_prefix: baseName,
-    page: null,
-    scale: 1024,
-  };
+  // Cấu hình pdf2pic
+  const convert = pdf2pic.fromPath(pdfPath, {
+    density: 200, // DPI (tương đương scale: 1024 của pdf-poppler)
+    saveFilename: baseName, // Prefix cho tên file
+    savePath: outputDir, // Thư mục output
+    format: "jpg", // Format ảnh
+    width: 1024, // Chiều rộng tối đa
+    height: 1448, // Chiều cao tối đa (tỷ lệ A4)
+    quality: 100, // Chất lượng ảnh
+  });
 
-  await pdfPoppler.convert(pdfPath, options);
-  const files = await fs.readdir(outputDir);
-  return files
-    .filter((f) => f.startsWith(baseName) && f.endsWith(".jpg"))
-    .map((f) => path.join(outputDir, f));
+  try {
+    // Convert tất cả pages (-1 = all pages)
+    const results = await convert.bulk(-1, {
+      responseType: "image",
+    });
+
+    // Trả về danh sách đường dẫn file ảnh
+    return results.map((result) => result.path);
+  } catch (error) {
+    console.error("Error converting PDF to images:", error);
+    throw new BadRequestError("Failed to convert PDF to images");
+  }
 };
 
 const ocrImage = async (imagePath) => {
@@ -85,6 +95,7 @@ Hãy:
 - Dịch phần nội dung chính xác, đúng ngữ cảnh
 - Giữ phong cách văn viết tương ứng, rõ ràng và tự nhiên
 - Không giải thích gì cả, chỉ trả về bản dịch
+- Nếu không có nội dung văn bản mà chỉ có các kí tự, dấu câu,.. thì hãy trả về đúng các kí tự và dấu câu đó (Lưu ý nếu có phần chữ giữa các kí tự dấu thì vẫn sẽ dịch phần chữ đó).
 - Dịch nội dung từ tiếng Nhật sang tiếng Việt nếu văn bản là tiếng Nhật.
 - Dịch nội dung từ tiếng Việt sang tiếng Nhật nếu văn bản là tiếng Việt.
 - Bản dịch chỉ hiển thị nội dung chính, không hiển thị các kí tự, các từ không liên quan đến nội dung.

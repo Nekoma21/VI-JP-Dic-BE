@@ -119,6 +119,29 @@ const searchWord = async (data) => {
       meaning: word.meaning[0].content,
     }));
 
+    // 3. Sort với custom comparator
+    formattedResults.sort((a, b) => {
+      const t = text; // "解"
+
+      // 1) Exact match ưu tiên nhất
+      if (a.text === t && b.text !== t) return -1;
+      if (b.text === t && a.text !== t) return 1;
+
+      // 2) Prefix match vs non-prefix
+      const ia = a.text.indexOf(t);
+      const ib = b.text.indexOf(t);
+      if (ia !== ib) return ia - ib;
+
+      // 3) Tại đây, cả a và b đều prefix (indexOf === 0)
+      //    So sánh độ dài đọc âm (hiragana) tăng dần
+      const ha = a.hiragana.length;
+      const hb = b.hiragana.length;
+      if (ha !== hb) return ha - hb;
+
+      // 4) Cuối cùng fallback theo Unicode Kanji
+      return a.text.localeCompare(b.text);
+    });
+
     return formattedResults;
   } catch (error) {
     throw error;

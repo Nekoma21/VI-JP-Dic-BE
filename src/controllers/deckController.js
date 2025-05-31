@@ -41,7 +41,7 @@ const deleteDeck = async (req, res, next) => {
     const result = await deckService.deleteDeck(id, userId);
     res.status(StatusCodes.OK).send(result);
   } catch (error) {
-    if (err instanceof NotFoundError) {
+    if (error instanceof NotFoundError) {
       return res.status(StatusCodes.NOT_FOUND).send({ message: err.message });
     }
     next(error);

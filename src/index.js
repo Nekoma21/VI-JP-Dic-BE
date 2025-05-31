@@ -10,6 +10,7 @@ import deckRouter from "./routes/deckRoutes.js";
 import cardRouter from "./routes/cardRoutes.js";
 import reviewRouter from "./routes/reviewRoutes.js";
 import compositionRouter from "./routes/compositionRoutes.js";
+import userRouter from "./routes/userRoutes.js";
 dotenv.config();
 
 const app = express();
@@ -19,7 +20,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(
   cors({
     origin: "*",
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
@@ -32,6 +33,7 @@ app.use("/api/v1/decks", deckRouter);
 app.use("/api/v1/cards", cardRouter);
 app.use("/api/v1/reviews", reviewRouter);
 app.use("/api/v1/compositions", compositionRouter);
+app.use("/api/v1/users", userRouter);
 
 const start = async () => {
   try {
