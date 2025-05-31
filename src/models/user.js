@@ -6,11 +6,11 @@ dotenv.config();
 
 const UserSchema = new mongoose.Schema(
   {
-    email: { type: String, require: true },
+    email: { type: String, required: true },
     password: { type: String, required: true },
-    fullname: { type: String, require: true },
-    username: { type: String, require: true },
-    role: { type: Number, require: true },
+    fullname: { type: String, required: true },
+    username: { type: String, required: true },
+    role: { type: Number, required: true },
     birthday: { type: Date },
     sex: { type: Boolean },
     level: { type: Number },
