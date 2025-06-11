@@ -2,6 +2,8 @@ import Word from "../models/word.js";
 import Kanji from "../models/kanji.js";
 import BadRequestError from "../errors/BadRequestError.js";
 import NotFoundError from "../errors/NotFoundError.js";
+import toRomaji from "../utils/toRomaji.js";
+import extractKanjiCharacters from "../utils/extractKanjiCharacters.js";
 
 const getAllWords = async (data) => {
   const page = parseInt(data.query.page);
@@ -148,8 +150,97 @@ const searchWord = async (data) => {
   }
 };
 
+const addNewWord = async (data) => {
+  try {
+    const { text, hiragana, meaning, examples } = data.body;
+
+    if (!text || !meaning) {
+      throw new BadRequestError("Thiếu thông tin cần thiết để thêm từ mới.");
+    }
+
+    const existingWord = await Word.findOne({ text });
+    if (existingWord) {
+      throw new BadRequestError("Từ kanji này đã tồn tại!");
+    }
+
+    const romanji = hiragana.map((hira) => toRomaji(hira));
+    const kanji = extractKanjiCharacters(text);
+    const word = new Word({
+      text,
+      hiragana,
+      meaning,
+      examples,
+      romanji,
+      kanji,
+    });
+
+    const savedWord = await word.save();
+    return savedWord;
+  } catch (error) {
+    throw error;
+  }
+};
+
+const updateWord = async (req) => {
+  try {
+    const { id } = req.params; // Lấy ID từ URL
+    const { text, hiragana, meaning, examples } = req.body; // Lấy dữ liệu từ payload
+
+    // Kiểm tra ID và các trường cần thiết
+    if (!id) {
+      throw new BadRequestError("Thiếu ID từ cần cập nhật.");
+    }
+
+    // Tìm từ cần cập nhật
+    const existingWord = await Word.findById(id);
+    if (!existingWord) {
+      throw new NotFoundError("Không tìm thấy từ cần cập nhật.");
+    }
+
+    // Cập nhật các trường cần thiết
+    existingWord.text = text || existingWord.text;
+    existingWord.hiragana = hiragana || existingWord.hiragana;
+    existingWord.meaning = meaning || existingWord.meaning;
+    existingWord.examples = examples || existingWord.examples;
+
+    // Cập nhật romanji và kanji
+    existingWord.romanji = hiragana.map((hira) => toRomaji(hira));
+    existingWord.kanji = extractKanjiCharacters(text);
+
+    // Lưu lại thay đổi
+    const updatedWord = await existingWord.save();
+    return updatedWord;
+  } catch (error) {
+    throw error;
+  }
+};
+
+const deleteWord = async (req) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      throw new BadRequestError("Thiếu ID từ cần xóa.");
+    }
+
+    const existingWord = await Word.findById(id);
+    if (!existingWord) {
+      throw new NotFoundError("Không tìm thấy từ cần xóa.");
+    }
+
+    await Word.findByIdAndDelete(id);
+
+    return { message: "Từ đã được xóa thành công." };
+  } catch (error) {
+    throw error;
+  }
+};
+
 export const wordService = {
   getAllWords,
   getWordById,
   searchWord,
+  addNewWord,
+  updateWord,
+  deleteWord,
 };

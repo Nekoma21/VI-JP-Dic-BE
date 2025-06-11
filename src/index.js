@@ -4,6 +4,7 @@ import cors from "cors";
 import connectDB from "./databases/connect.js";
 import authRouter from "./routes/authRoutes.js";
 import wordRouter from "./routes/wordRoutes.js";
+import kanjiRouter from "./routes/kanjiRoutes.js";
 import translateRouter from "./routes/translateRoutes.js";
 import fsrsRouter from "./routes/fsrsRoutes.js";
 import deckRouter from "./routes/deckRoutes.js";
@@ -11,9 +12,11 @@ import cardRouter from "./routes/cardRoutes.js";
 import reviewRouter from "./routes/reviewRoutes.js";
 import compositionRouter from "./routes/compositionRoutes.js";
 import userRouter from "./routes/userRoutes.js";
+import dashboardRoute from "./routes/dashboardRoutes.js";
 dotenv.config();
 
 const app = express();
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -27,6 +30,7 @@ app.use(
 
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/words", wordRouter);
+app.use("/api/v1/kanjis", kanjiRouter);
 app.use("/api/v1/translates", translateRouter);
 app.use("/api/v1/fsrs", fsrsRouter);
 app.use("/api/v1/decks", deckRouter);
@@ -34,6 +38,7 @@ app.use("/api/v1/cards", cardRouter);
 app.use("/api/v1/reviews", reviewRouter);
 app.use("/api/v1/compositions", compositionRouter);
 app.use("/api/v1/users", userRouter);
+app.use("/api/v1/dashboard", dashboardRoute);
 
 const start = async () => {
   try {

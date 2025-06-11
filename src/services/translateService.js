@@ -9,6 +9,11 @@ import BadRequestError from "../errors/BadRequestError.js";
 import { StatusCodes } from "http-status-codes";
 import OpenAI from "openai";
 
+import { exec } from "child_process";
+import { promisify } from "util";
+
+const execAsync = promisify(exec);
+
 dotenv.config();
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -17,42 +22,71 @@ const convertPdfToImages = async (pdfPath) => {
   const outputDir = path.dirname(pdfPath);
   const baseName = path.basename(pdfPath, ".pdf");
 
-  // Cấu hình pdf2pic
-  const convert = pdf2pic.fromPath(pdfPath, {
-    density: 200, // DPI (tương đương scale: 1024 của pdf-poppler)
-    saveFilename: baseName, // Prefix cho tên file
-    savePath: outputDir, // Thư mục output
-    format: "jpg", // Format ảnh
-    width: 1024, // Chiều rộng tối đa
-    height: 1448, // Chiều cao tối đa (tỷ lệ A4)
-    quality: 100, // Chất lượng ảnh
-  });
-
   try {
-    // Convert tất cả pages (-1 = all pages)
-    const results = await convert.bulk(-1, {
-      responseType: "image",
-    });
+    // Sử dụng poppler-utils trực tiếp
+    const command = `pdftoppm -jpeg -r 200 "${pdfPath}" "${outputDir}/${baseName}"`;
+    console.log("Converting PDF with command:", command);
 
-    // Trả về danh sách đường dẫn file ảnh
-    return results.map((result) => result.path);
+    const { stdout, stderr } = await execAsync(command);
+
+    if (stderr) {
+      console.error("pdftoppm stderr:", stderr);
+    }
+
+    // Tìm các file ảnh đã tạo
+    const fs = await import("fs/promises");
+    const files = await fs.readdir(outputDir);
+    const imageFiles = files
+      .filter((file) => file.startsWith(baseName) && file.endsWith(".jpg"))
+      .map((file) => path.join(outputDir, file));
+
+    console.log("Generated image files:", imageFiles);
+
+    return imageFiles;
   } catch (error) {
-    console.error("Error converting PDF to images:", error);
+    console.error("Error converting PDF with poppler:", error);
     throw new BadRequestError("Failed to convert PDF to images");
   }
 };
 
 const ocrImage = async (imagePath) => {
-  const worker = await createWorker("jpn+vie");
-  const { data } = await worker.recognize(imagePath);
-  await worker.terminate();
-  return data.text;
+  try {
+    console.log("Using tesseract CLI...");
+
+    // Sử dụng tesseract CLI với traineddata local
+    const command = `TESSDATA_PREFIX=/app tesseract "${imagePath}" stdout -l jpn+vie`;
+    const { stdout, stderr } = await execAsync(command);
+
+    if (stderr && !stderr.includes("Warning")) {
+      console.error("Tesseract stderr:", stderr);
+    }
+
+    return stdout.trim();
+  } catch (error) {
+    console.error("Tesseract CLI error:", error);
+
+    // Fallback với chỉ tiếng Nhật
+    try {
+      const command = `TESSDATA_PREFIX=/app tesseract "${imagePath}" stdout -l jpn`;
+      const { stdout } = await execAsync(command);
+      return stdout.trim();
+    } catch (fallbackError) {
+      throw fallbackError;
+    }
+  }
 };
 
 const detectText = async (fileBuffer, originalName) => {
   const tempDir = os.tmpdir();
   const filePath = path.join(tempDir, uuidv4() + "-" + originalName);
   await fs.writeFile(filePath, fileBuffer);
+
+  console.log(
+    "Wrote PDF to",
+    filePath,
+    "size:",
+    (await fs.stat(filePath)).size
+  );
 
   try {
     let imagePaths = [];

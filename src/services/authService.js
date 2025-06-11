@@ -54,15 +54,18 @@ const signUp = async (data) => {
 const verifyEmail = async (req) => {
   try {
     const user = await User.findOne({ _id: req.params.id });
-    if (!user) throw new NotFoundError("Invalid link: User not found");
+    if (!user) throw new NotFoundError("Link không hợp lệ: User không tồn tại");
 
     const token = await Token.findOne({
       userId: user._id,
       token: req.params.token,
     });
-    if (!token) throw new NotFoundError("Invalid link: User not found");
+    if (!token) throw new NotFoundError("Link không hợp lệ hoặc đã hết hạn");
 
-    await User.updateOne({ _id: user._id, verified: true });
+    await User.updateOne(
+      { _id: user._id }, // <— filter
+      { verified: true } // <— update (Mongoose sẽ tự thêm $set)
+    );
     await token.deleteOne();
     const payload = { _id: user._id.toString(), role: user.role };
     const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET, {
@@ -107,7 +110,7 @@ const login = async (req) => {
           userId: user._id,
           token: crypto.randomBytes(32).toString("hex"),
         }).save();
-        const url = `${process.env.BASE_URL}user/verify/${user._id}/${token.token}`;
+        const url = `${process.env.FE_BASE_URL}user/verify/${user._id}/${token.token}`;
         await sendEmail(user.email, "Verify Email", url);
       }
 
@@ -175,9 +178,70 @@ const refreshToken = async (data) => {
   }
 };
 
+const forgotPassword = async (req) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email });
+  if (!user) {
+    throw new NotFoundError("Email không tồn tại trong hệ thống");
+  }
+
+  await Token.deleteMany({ userId: user._id });
+  const tokenString = crypto.randomBytes(32).toString("hex");
+  await new Token({ userId: user._id, token: tokenString }).save();
+
+  const url = `${process.env.FE_BASE_URL}user/verify-mail-reset/${user._id}/${tokenString}`;
+  await sendEmail(
+    user.email,
+    "Reset mật khẩu",
+    `Nhấn vào link sau để đặt lại mật khẩu: ${url}`
+  );
+};
+
+const verifyMailReset = async (req) => {
+  const { id, token } = req.params;
+
+  const user = await User.findById(id);
+  if (!user) throw new NotFoundError("Link không hợp lệ: User không tồn tại");
+
+  const dbToken = await Token.findOne({ userId: user._id, token });
+  if (!dbToken) throw new NotFoundError("Link không hợp lệ hoặc đã hết hạn");
+
+  return;
+};
+
+const resetPassword = async (req) => {
+  const { id, token } = req.params;
+  const { password } = req.body;
+
+  const dbToken = await Token.findOne({ userId: id, token });
+  if (!dbToken) {
+    throw new NotFoundError("Hết hạn cập nhật mật khẩu hoặc không hợp lệ");
+  }
+
+  const user = await User.findById(id);
+  if (!user) {
+    throw new NotFoundError("User không tồn tại");
+  }
+
+  const isSame = await bcrypt.compare(password, user.password);
+  if (isSame) {
+    throw new BadRequestError("Bạn đang nhập mật khẩu cũ");
+  }
+
+  const salt = await bcrypt.genSalt(Number(process.env.SALT));
+  const hashedPass = await bcrypt.hash(password, salt);
+
+  user.password = hashedPass;
+  await user.save();
+  await dbToken.deleteOne();
+};
+
 export const authService = {
   signUp,
   login,
   verifyEmail,
   refreshToken,
+  forgotPassword,
+  verifyMailReset,
+  resetPassword,
 };

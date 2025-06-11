@@ -76,10 +76,23 @@ const uploadAvatar = async (req, res, next) => {
   }
 };
 
+const getAllUsers = async (req, res, next) => {
+  try {
+    const result = await userService.getAllUsers(req);
+    return res.status(StatusCodes.OK).json({
+      status: "success",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const userController = {
   getUser,
   updateUserName,
   updateUser,
   changePass,
   uploadAvatar,
+  getAllUsers,
 };

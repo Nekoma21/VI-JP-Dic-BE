@@ -15,4 +15,6 @@ userRouter
   .route("/upload")
   .patch(Auth.UserAuth, upload.single("avatar"), userController.uploadAvatar);
 
+userRouter.route("/list").get(Auth.AdminAuth, userController.getAllUsers);
+
 export default userRouter;

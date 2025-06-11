@@ -40,8 +40,47 @@ const searchWord = async (req, res, next) => {
   }
 };
 
+const addNewWord = async (req, res, next) => {
+  try {
+    const result = await wordService.addNewWord(req);
+    return res.status(StatusCodes.CREATED).json({
+      status: "success",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateWord = async (req, res, next) => {
+  try {
+    const result = await wordService.updateWord(req);
+    return res.status(StatusCodes.OK).json({
+      status: "success",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deleteWord = async (req, res, next) => {
+  try {
+    const result = await wordService.deleteWord(req);
+    return res.status(StatusCodes.OK).json({
+      status: "success",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const wordController = {
   getAllWords,
   getWordById,
   searchWord,
+  addNewWord,
+  updateWord,
+  deleteWord,
 };

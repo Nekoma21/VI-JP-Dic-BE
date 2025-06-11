@@ -118,10 +118,76 @@ const updateUserAvatar = async (userId, avtPath) => {
   }
 };
 
+const maskEmail = (email) => {
+  const [local, domain] = email.split("@");
+  if (local.length <= 3) {
+    return local[0] + "*".repeat(local.length - 1) + "@" + domain;
+  }
+  return local.slice(0, 3) + "*".repeat(local.length - 3) + "@" + domain;
+};
+
+const getAllUsers = async (req) => {
+  let page = parseInt(req.query.page);
+  const limit = parseInt(req.query.limit);
+
+  try {
+    if (!page || !limit) {
+      const users = await User.find({ role: 0 }).select(
+        "fullname username email created_at avatar"
+      ); // Chỉ lấy các trường cần thiết
+
+      const data = users.map((user) => ({
+        fullname: user.fullname,
+        username: user.username,
+        email: maskEmail(user.email),
+        created_at: user.created_at,
+        avatar: user.avatar,
+      }));
+
+      return {
+        totalPages: 1,
+        currentPage: 1,
+        data,
+      };
+    }
+
+    const total = await User.countDocuments({ role: 0 });
+    const totalPages = Math.ceil(total / limit);
+
+    if (page > totalPages) page = totalPages;
+
+    const users = await User.find({ role: 0 })
+      .select("fullname username email created_at avatar")
+      .skip((page - 1) * limit)
+      .limit(limit);
+
+    const data = users.map((user) => ({
+      fullname: user.fullname,
+      username: user.username,
+      email: maskEmail(user.email),
+      created_at: user.created_at,
+      avatar: user.avatar,
+    }));
+
+    if (data.length > 0) {
+      return {
+        totalPages,
+        currentPage: page,
+        data,
+      };
+    } else {
+      throw new NotFoundError("Không tìm thấy người dùng!");
+    }
+  } catch (error) {
+    throw error;
+  }
+};
+
 export const userService = {
   getUserInfo,
   changeUsername,
   updateUserInfo,
   changePassword,
   updateUserAvatar,
+  getAllUsers,
 };

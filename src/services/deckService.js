@@ -1,7 +1,6 @@
 import { StatusCodes } from "http-status-codes";
 import NotFoundError from "../errors/NotFoundError.js";
 import Deck from "../models/deck.js";
-import Card from "../models/card.js";
 
 const getListDeck = async (userId) => {
   try {

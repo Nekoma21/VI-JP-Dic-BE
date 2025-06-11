@@ -9,3 +9,5 @@ node_modules/
 
 jpn.traineddata
 vie.traineddata
+
+.env.be.prod

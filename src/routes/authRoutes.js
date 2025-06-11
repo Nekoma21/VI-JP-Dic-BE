@@ -12,4 +12,12 @@ router
   .route("/refresh")
   .post(Auth.ignoreExpirationAuth, authController.refreshToken);
 
+router.route("/forgot-password").post(authController.forgotPassword);
+
+router
+  .route("/verify-mail-reset/:id/:token")
+  .get(authController.verifyMailReset);
+
+router.route("/reset-password/:id/:token").post(authController.resetPassword);
+
 export default router;
